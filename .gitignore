@@ -1,0 +1,38 @@
+_archive/
+# =========================
+# Vivado (generated junk)
+# =========================
+*.jou
+*.log
+*.str
+*.dcp
+*.rpt
+*.xml
+*.html
+*.vdi
+*.vds
+*.wdb
+
+**/.Xil/
+**/Xil/
+**/*.cache/
+**/*.hw/
+**/*.ip_user_files/
+**/*.runs/
+**/*.sim/
+**/*.srcs/**/imports/
+
+# =========================
+# OS/editor
+# =========================
+Thumbs.db
+.DS_Store
+.vscode/
+.idea/
+
+# =========================
+# MATLAB (optional)
+# =========================
+*.asv
+*.autosave
+slprj/
