@@ -2,42 +2,41 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
+------------------------------------------------------------------------
+-- Top-level hardware module for the basic, fifo-less UART-USB
+-- transmission, specifically designed for validation via loopback
+-- testing, but transferable across recieving and transmitting domains
+------------------------------------------------------------------------
 entity top_uart_loopback_basic is
     port (
         CLK100MHZ : in  std_logic;
         RESETN    : in  std_logic;
         uart_rx   : in  std_logic;
-        uart_tx   : out std_logic;
-        led       : out std_logic_vector(7 downto 0)
+        uart_tx   : out std_logic
     );
 end entity;
 
 architecture rtl of top_uart_loopback_basic is
 
     -- UART parallel interface signals
-    signal rx_data        : std_logic_vector(7 downto 0);
-    signal rx_stb         : std_logic;
-    signal tx_data        : std_logic_vector(7 downto 0);
-    signal tx_stb         : std_logic;
-    signal tx_ack         : std_logic;
-
-    -- Store last received byte for LEDs
-    signal last_byte      : std_logic_vector(7 downto 0) := (others => '0');
-
-    -- Active-high reset for UART core
-    signal rst            : std_logic;
+    signal rx_data   : std_logic_vector(7 downto 0);  -- 8-bit parallel byte recieved from UART
+    signal rx_stb    : std_logic;                     -- Indicator that rx_data is valid and to recieve
+    signal tx_data   : std_logic_vector(7 downto 0);  -- 8-bit parallel byte to be transmitted by UART
+    signal tx_stb    : std_logic;                     -- Request for UART to transmit tx_data
+    signal tx_ack    : std_logic;                     -- Indicator that tx_data was accepted
+    
+    signal rst       : std_logic;                     -- Active-high reset
 
 begin
 
-    -- Convert board RESETN (active low) to active-high reset
-    rst <= not RESETN;
+    rst <= not RESETN; -- Convert board RESETN to active-high reset
 
     --------------------------------------------------------------------
-    -- UART instance (from GitHub)
+    -- UART instance
     --------------------------------------------------------------------
     U_UART : entity work.uart
         generic map (
-            baud            => 115200,
+            baud            => 115200,    -- Experimentally determined max
             clock_frequency => 100000000  -- 100 MHz board clock
         )
         port map (
@@ -53,33 +52,27 @@ begin
         );
 
     --------------------------------------------------------------------
-    -- Simple loopback logic:
-    -- whenever a byte is received, echo it back and show it on LEDs
+    -- Simple loopback logic: when a byte is received, echo it back
     --------------------------------------------------------------------
     process (CLK100MHZ)
     begin
         if rising_edge(CLK100MHZ) then
+            -- if reset signal is set, set tx_data to 0 and don't transmit data
             if rst = '1' then
                 tx_stb    <= '0';
                 tx_data   <= (others => '0');
-                last_byte <= (others => '0');
             else
-                -- default: don't request a transmit
+                -- If tx_data was accepted, no longer request transmision via strobe
                 if tx_ack = '1' then
-                    -- UART accepted the byte, drop the strobe
                     tx_stb <= '0';
                 end if;
 
-                -- New byte received?
-                if rx_stb = '1' then
-                    last_byte <= rx_data;   -- show on LEDs
-                    tx_data   <= rx_data;   -- echo back
-                    tx_stb    <= '1';       -- request transmit
+                -- If a new byte was recieved and not waiting to transmit, send byte back
+                if (rx_stb = '1') and (tx_stb = '0') then
+                    tx_data   <= rx_data;   -- echo back to source
+                    tx_stb    <= '1';       -- request transmission
                 end if;
             end if;
         end if;
     end process;
-
-    led <= last_byte;
-
 end architecture;
