@@ -1,12 +1,13 @@
-library ieee;
-use ieee.std_logic_1164.all;
-use ieee.numeric_std.all;
-
 ------------------------------------------------------------------------
 -- Top-level hardware module for the basic, fifo-less UART-USB
 -- transmission, specifically designed for validation via loopback
 -- testing, but transferable across recieving and transmitting domains
 ------------------------------------------------------------------------
+
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
 entity top_uart_loopback_basic is
     port (
         CLK100MHZ : in  std_logic;
