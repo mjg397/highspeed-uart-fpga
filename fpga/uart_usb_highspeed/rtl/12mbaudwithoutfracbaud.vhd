@@ -16,7 +16,7 @@ entity uart is
     generic (
         baud                : positive;
         clock_frequency     : positive;
-        --oversample          : positive := 8      -- <<< set to 4, 8, or 16 -- think about a oversample change of more robustness of it
+        oversample          : positive := 8      -- <<< set to 4, 8, or 16 -- think about a oversample change of more robustness of it
     );
     port (
         clock               : in  std_logic;
