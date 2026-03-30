@@ -7,4 +7,5 @@ supports
 6mbaud,
 3.125mbaud
 tested does not support:
-6.25mbaud (FT232 integrity issues)
+6.25mbaud (FT232 integrity issues),
+10mbaud
