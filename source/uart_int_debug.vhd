@@ -51,7 +51,7 @@ library ieee;
 entity uart is
     generic (
         baud                : positive;
-        clock_frequency     : positive;
+        clock_frequency     : positive
     );
     port (
         clock               : in  std_logic;
@@ -149,7 +149,7 @@ begin
     -- dbg_rx_baud_tick     : Oversample tick (baud * oversample)
     -- dbg_uart_rx_bit      : Synchronized RX input bit
     -- dbg_uart_rx_bit_tick : 1x bit sampling tick
-    -- dbg_uart_rx_count    : Counts received data bits (0–7)
+    -- dbg_uart_rx_count    : Counts received data bits (0-7)
     -- dbg_uart_rx_data_vec : Current received byte (shift register)
     -- dbg_uart_rx_data_sr  : RX synchronizer shift register
     -- dbg_uart_rx_spacing  : Oversample spacing counter
