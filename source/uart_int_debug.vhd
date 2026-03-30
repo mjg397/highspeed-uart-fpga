@@ -207,7 +207,7 @@ begin
     end process;
 
     ---------------------------------------------------------------------------
-    -- RXD_SYNCRONIZE
+    -- RXD_SYNCHRONIZE
     --
     -- Two-stage flip-flop synchronizer to safely bring the asynchronous RX
     -- signal into the FPGA clock domain and reduce metastability.
