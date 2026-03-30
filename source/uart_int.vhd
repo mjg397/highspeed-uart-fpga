@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- High-Speed UART (up to ~12 Mbaud)
+-- High-Speed UART (up to 12 Mbaud)
 --
 -- Author: Michael Grillo
 -- Based on original UART design by Peter Bennett:
