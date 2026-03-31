@@ -188,59 +188,70 @@ begin
     -- Non-fractional clock divider for the receiver oversample clock.
     -- Generates rx_baud_tick at approximately baud * oversample.
     ---------------------------------------------------------------------------
+    ---------------------------------------------------------------------------
+    -- RX_CLOCK_DIVIDER
+    --
+    -- Fractional clock divider for the receiver timing tick.
+    -- Uses integer division plus remainder accumulation so the
+    -- average tick rate matches the desired rate even when the
+    -- divider is non-integer.
+    ---------------------------------------------------------------------------
+
+    ---------------------------------------------------------------------------
+    -- Fractional baud divider constants
+    --
+    -- These are computed at compile time.
+    -- The hardware only implements counter + remainder accumulation.
+    ---------------------------------------------------------------------------
+
+    constant c_tx_div : integer := CLOCK_FREQ / BAUD;
+    constant c_tx_rem : integer := CLOCK_FREQ mod BAUD;
+    constant c_tx_den : integer := BAUD;
+
+    constant c_rx_div : integer := CLOCK_FREQ / BAUD;
+    constant c_rx_rem : integer := CLOCK_FREQ mod BAUD;
+    constant c_rx_den : integer := BAUD;
+
+    ---------------------------------------------------------------------------
+    -- Fractional baud divider signals
+    ---------------------------------------------------------------------------
+
+    signal tx_rem_accum : integer range 0 to CLOCK_FREQ := 0;
+    signal tx_div_adj   : integer range 0 to 1 := 0;
+
+    signal rx_rem_accum : integer range 0 to CLOCK_FREQ := 0;
+    signal rx_div_adj   : integer range 0 to 1 := 0;
+
     rx_clock_divider : process (clock)
+        variable v_next_rem  : integer;
+        variable v_div_limit : integer;
     begin
         if rising_edge(clock) then
             if reset = '1' then
                 rx_baud_counter <= (others => '0');
                 rx_baud_tick    <= '0';
+                rx_rem_accum    <= 0;
+                rx_div_adj      <= 0;
             else
-                if rx_baud_counter = to_unsigned(c_rx_div - 1, rx_baud_counter'length) then
-                    rx_baud_counter <= (others => '0');
-                    rx_baud_tick    <= '1';
-                else
-                    rx_baud_counter <= rx_baud_counter + 1;
-                    rx_baud_tick    <= '0';
-                end if;
-            end if;
-        end if;
-    end process;
+                v_div_limit := c_rx_div - 1 + rx_div_adj;
 
-    signal rx_frac_cnt  : unsigned(1 downto 0) := (others => '0'); -- counts 0,1,2
-    signal rx_div_curr  : unsigned(rx_baud_counter'length-1 downto 0);
-
-    rx_clock_divider : process (clock)
-    begin
-        if rising_edge(clock) then
-            if reset = '1' then
-                rx_baud_counter <= (others => '0');
-                rx_baud_tick    <= '0';
-                rx_frac_cnt     <= (others => '0');
-            else
-
-                -- choose current divider (8 or 9)
-                if rx_frac_cnt = 2 then
-                    rx_div_curr <= to_unsigned(c_rx_div, rx_div_curr'length);     -- 9
-                else
-                    rx_div_curr <= to_unsigned(c_rx_div - 1, rx_div_curr'length); -- 8
-                end if;
-
-                if rx_baud_counter = rx_div_curr then
+                if rx_baud_counter = to_unsigned(v_div_limit, rx_baud_counter'length) then
                     rx_baud_counter <= (others => '0');
                     rx_baud_tick    <= '1';
 
-                    -- update fractional counter
-                    if rx_frac_cnt = 2 then
-                        rx_frac_cnt <= (others => '0');
+                    v_next_rem := rx_rem_accum + c_rx_rem;
+
+                    if v_next_rem >= c_rx_den then
+                        rx_rem_accum <= v_next_rem - c_rx_den;
+                        rx_div_adj   <= 1;
                     else
-                        rx_frac_cnt <= rx_frac_cnt + 1;
+                        rx_rem_accum <= v_next_rem;
+                        rx_div_adj   <= 0;
                     end if;
-
                 else
                     rx_baud_counter <= rx_baud_counter + 1;
                     rx_baud_tick    <= '0';
                 end if;
-
             end if;
         end if;
     end process;
@@ -385,19 +396,51 @@ begin
     -- Generates a tick at the baud rate (1x).
     -- Each tick advances the transmitter by one bit.
     ---------------------------------------------------------------------------
-    tx_clock_divider : process(clock)
+    ---------------------------------------------------------------------------
+    -- RX_CLOCK_DIVIDER
+    --
+    -- Fractional clock divider for the receiver baud tick.
+    -- Uses integer division plus remainder accumulation so the
+    -- average tick rate matches BAUD even when CLOCK_FREQ / BAUD
+    -- is not an integer.
+    ---------------------------------------------------------------------------
+
+    rx_clock_divider : process (clock)
+        variable v_next_rem  : integer;
+        variable v_div_limit : integer;
     begin
         if rising_edge(clock) then
             if reset = '1' then
-                tx_baud_counter <= (others => '0');
-                tx_baud_tick    <= '0';
+                rx_baud_counter <= (others => '0');
+                rx_baud_tick    <= '0';
+                rx_rem_accum    <= 0;
+                rx_div_adj      <= 0;
             else
-                if tx_baud_counter = to_unsigned(c_tx_div - 1, tx_baud_counter'length) then
-                    tx_baud_counter <= (others => '0');
-                    tx_baud_tick    <= '1';
+                -- normal interval   = c_rx_div clocks
+                -- extended interval = c_rx_div + 1 clocks
+                --
+                -- counter starts at 0, so compare against:
+                -- normal   -> c_rx_div - 1
+                -- extended -> c_rx_div
+                v_div_limit := c_rx_div - 1 + rx_div_adj;
+
+                if rx_baud_counter = to_unsigned(v_div_limit, rx_baud_counter'length) then
+                    rx_baud_counter <= (others => '0');
+                    rx_baud_tick    <= '1';
+
+                    -- decide whether NEXT interval gets one extra clock
+                    v_next_rem := rx_rem_accum + c_rx_rem;
+
+                    if v_next_rem >= c_rx_den then
+                        rx_rem_accum <= v_next_rem - c_rx_den;
+                        rx_div_adj   <= 1;
+                    else
+                        rx_rem_accum <= v_next_rem;
+                        rx_div_adj   <= 0;
+                    end if;
                 else
-                    tx_baud_counter <= tx_baud_counter + 1;
-                    tx_baud_tick    <= '0';
+                    rx_baud_counter <= rx_baud_counter + 1;
+                    rx_baud_tick    <= '0';
                 end if;
             end if;
         end if;
