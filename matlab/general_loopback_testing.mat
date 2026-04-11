@@ -1,0 +1,116 @@
+clc; clear;
+
+%% ===== USER SETTINGS =====
+portName = "COM9";
+baudRate = 12000000;      % set to whatever you're testing
+N = 256;                % bytes per trial
+trials = 100;           % number of repetitions
+timeout_s = 2;          % per-trial timeout
+
+%% ===== RESULTS STORAGE =====
+receivedCount = zeros(trials,1);
+matchFlag     = false(trials,1);
+duration_s    = zeros(trials,1);
+firstBadIdx   = nan(trials,1);   % first mismatch index (0-based), NaN if none/unknown
+
+%% ===== RUN TESTS =====
+fprintf("Running %d trials on %s @ %d baud, N=%d bytes...\n\n", trials, portName, baudRate, N);
+
+for k = 1:trials
+    tStart = tic;
+
+    % Open port fresh each trial (most robust)
+    com = serialport(portName, baudRate);
+    com.Timeout = timeout_s;
+    flush(com);
+
+    % Send pattern
+    tx = uint8(0:N-1);
+    write(com, tx, "uint8");
+
+    % Receive until N or timeout
+    rx = uint8([]);
+    t0 = tic;
+    while numel(rx) < N && toc(t0) < timeout_s
+        a = com.NumBytesAvailable;
+        if a > 0
+            chunk = read(com, a, "uint8");
+            rx = [rx; chunk(:)]; %#ok<AGROW>
+        end
+    end
+
+    clear com; % closes port
+    duration_s(k) = toc(tStart);
+
+    % Record stats
+    receivedCount(k) = numel(rx);
+
+    if numel(rx) == N
+        % Compare
+        same = isequal(tx(:), rx(:));
+        matchFlag(k) = same;
+
+        if ~same
+            % Find first mismatch (0-based index for convenience)
+            idx = find(tx(:) ~= rx(:), 1, "first");
+            firstBadIdx(k) = idx - 1;
+        end
+    else
+        matchFlag(k) = false;
+        % firstBadIdx stays NaN (we didn't even get N bytes)
+    end
+
+    % Quick progress line every trial
+    fprintf("Trial %3d/%3d | recv=%3d | match=%d | dt=%.3fs\n", ...
+        k, trials, receivedCount(k), matchFlag(k), duration_s(k));
+    
+end
+
+%% ===== SUMMARY =====
+passStrict = (receivedCount == N) & matchFlag;
+passRate = mean(passStrict) * 100;
+
+avgRecv = mean(receivedCount);
+minRecv = min(receivedCount);
+maxRecv = max(receivedCount);
+
+avgTime = mean(duration_s);
+p95Time = prctile(duration_s, 95);
+
+% Throughput estimates (based on actual bytes received per trial / duration)
+throughput_Bps = receivedCount ./ duration_s;     % bytes/sec
+avgThroughput = mean(throughput_Bps);
+p05Throughput = prctile(throughput_Bps, 5);
+
+% Mismatch / short-receive counts
+nStrictPass = sum(passStrict);
+nShort = sum(receivedCount < N);
+nFullButMismatch = sum((receivedCount == N) & ~matchFlag);
+
+fprintf("\n================ SUMMARY ================\n");
+fprintf("Port: %s | Baud: %d | N: %d | Trials: %d\n", portName, baudRate, N, trials);
+fprintf("STRICT PASS (recv==N AND match==1): %d/%d (%.1f%%)\n", nStrictPass, trials, passRate);
+fprintf("Avg bytes received: %.1f (min=%d, max=%d)\n", avgRecv, minRecv, maxRecv);
+fprintf("Short receives (<N): %d trials\n", nShort);
+fprintf("Full receives (=N) but mismatch: %d trials\n", nFullButMismatch);
+fprintf("Avg trial time: %.3fs (95th%%=%.3fs)\n", avgTime, p95Time);
+fprintf("Avg throughput: %.0f B/s (5th%%=%.0f B/s)\n", avgThroughput, p05Throughput);
+
+% If mismatches happened, show common first-bad positions
+badIdx = firstBadIdx(~isnan(firstBadIdx));
+if ~isempty(badIdx)
+    fprintf("\nFirst mismatch index stats (0-based):\n");
+    fprintf("  count=%d | min=%d | median=%d | max=%d\n", ...
+        numel(badIdx), min(badIdx), round(median(badIdx)), max(badIdx));
+
+    % show top 10 most common mismatch indices
+    [u,~,ic] = unique(badIdx);
+    counts = accumarray(ic, 1);
+    [countsSorted, order] = sort(counts, "descend");
+    top = min(10, numel(u));
+    fprintf("  Most common first-bad indices:\n");
+    for i = 1:top
+        fprintf("    idx=%d occurred %d times\n", u(order(i)), countsSorted(i));
+    end
+end
+fprintf("========================================\n");
