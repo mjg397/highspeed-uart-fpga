@@ -2,7 +2,7 @@ clc; clear;
 
 %% Testing Settings (Change with different hardware + testing data)
 portName = "COM5";      % USB COM Port
-baudRate = 3000000;     % Baud Rate
+baudRate = 12000000;     % Baud Rate
 dataPath = "row.mat";   % Data Path
 trials = 20;            % Number of Trials
 timeout_s = 2;          % Serial Port Timeout
