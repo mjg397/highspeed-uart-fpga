@@ -141,6 +141,28 @@ architecture rtl of uart is
     signal uart_rx_bit_tick     : std_logic := '0';
     signal start_confirm_count  : integer range 0 to oversample := 0;
 
+    ---------------------------------------------------------------------------
+    -- Fractional baud divider constants
+    --
+    -- These are computed at compile time.
+    -- The hardware only implements counter + remainder accumulation.
+    ---------------------------------------------------------------------------
+
+    constant c_tx_rem : integer := clock_frequency mod baud;
+    constant c_tx_den : integer := baud;
+
+    constant c_rx_rem : integer := clock_frequency mod baud;
+    constant c_rx_den : integer := baud;
+
+    ---------------------------------------------------------------------------
+    -- Fractional baud divider signals
+    ---------------------------------------------------------------------------
+
+    signal tx_rem_accum : integer range 0 to clock_frequency := 0;
+    signal tx_div_adj   : integer range 0 to 1 := 0;
+
+    signal rx_rem_accum : integer range 0 to clock_frequency := 0;
+    signal rx_div_adj   : integer range 0 to 1 := 0;
 begin
     
     ---------------------------------------------------------------------------
@@ -197,28 +219,7 @@ begin
     -- divider is non-integer.
     ---------------------------------------------------------------------------
 
-    ---------------------------------------------------------------------------
-    -- Fractional baud divider constants
-    --
-    -- These are computed at compile time.
-    -- The hardware only implements counter + remainder accumulation.
-    ---------------------------------------------------------------------------
 
-    constant c_tx_rem : integer := CLOCK_FREQ mod BAUD;
-    constant c_tx_den : integer := BAUD;
-
-    constant c_rx_rem : integer := CLOCK_FREQ mod BAUD;
-    constant c_rx_den : integer := BAUD;
-
-    ---------------------------------------------------------------------------
-    -- Fractional baud divider signals
-    ---------------------------------------------------------------------------
-
-    signal tx_rem_accum : integer range 0 to CLOCK_FREQ := 0;
-    signal tx_div_adj   : integer range 0 to 1 := 0;
-
-    signal rx_rem_accum : integer range 0 to CLOCK_FREQ := 0;
-    signal rx_div_adj   : integer range 0 to 1 := 0;
 
     rx_clock_divider : process (clock)
         variable v_next_rem  : integer;
@@ -403,16 +404,16 @@ begin
     -- is not an integer.
     ---------------------------------------------------------------------------
 
-    rx_clock_divider : process (clock)
+    tx_clock_divider : process (clock)
         variable v_next_rem  : integer;
         variable v_div_limit : integer;
     begin
         if rising_edge(clock) then
             if reset = '1' then
-                rx_baud_counter <= (others => '0');
+                tx_baud_counter <= (others => '0');
                 rx_baud_tick    <= '0';
-                rx_rem_accum    <= 0;
-                rx_div_adj      <= 0;
+                tx_rem_accum    <= 0;
+                tx_div_adj      <= 0;
             else
                 -- normal interval   = c_rx_div clocks
                 -- extended interval = c_rx_div + 1 clocks
@@ -420,25 +421,25 @@ begin
                 -- counter starts at 0, so compare against:
                 -- normal   -> c_rx_div - 1
                 -- extended -> c_rx_div
-                v_div_limit := c_rx_div - 1 + rx_div_adj;
+                v_div_limit := c_tx_div - 1 + tx_div_adj;
 
-                if rx_baud_counter = to_unsigned(v_div_limit, rx_baud_counter'length) then
-                    rx_baud_counter <= (others => '0');
-                    rx_baud_tick    <= '1';
+                if tx_baud_counter = to_unsigned(v_div_limit, tx_baud_counter'length) then
+                    tx_baud_counter <= (others => '0');
+                    tx_baud_tick    <= '1';
 
                     -- decide whether NEXT interval gets one extra clock
-                    v_next_rem := rx_rem_accum + c_rx_rem;
+                    v_next_rem := tx_rem_accum + c_tx_rem;
 
-                    if v_next_rem >= c_rx_den then
-                        rx_rem_accum <= v_next_rem - c_rx_den;
-                        rx_div_adj   <= 1;
+                    if v_next_rem >= c_tx_den then
+                        tx_rem_accum <= v_next_rem - c_tx_den;
+                        tx_div_adj   <= 1;
                     else
-                        rx_rem_accum <= v_next_rem;
-                        rx_div_adj   <= 0;
+                        tx_rem_accum <= v_next_rem;
+                        tx_div_adj   <= 0;
                     end if;
                 else
-                    rx_baud_counter <= rx_baud_counter + 1;
-                    rx_baud_tick    <= '0';
+                    tx_baud_counter <= tx_baud_counter + 1;
+                    tx_baud_tick    <= '0';
                 end if;
             end if;
         end if;
