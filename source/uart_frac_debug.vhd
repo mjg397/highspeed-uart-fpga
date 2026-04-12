@@ -91,17 +91,9 @@ architecture rtl of uart is
 
     constant half_bit_count : integer := oversample/2 - 1;
     
-        ---------------------------------------------------------------------------
-    -- Fractional baud divider constants
-    --
-    -- These are computed at compile time.
-    -- The hardware only implements counter + remainder accumulation.
-    ---------------------------------------------------------------------------
-
     constant c_tx_rem : integer := clock_frequency mod baud;
-    constant c_tx_den : integer := baud;
-
     constant c_rx_rem : integer := clock_frequency mod baud;
+    constant c_tx_den : integer := baud;
     constant c_rx_den : integer := baud;
 
     
@@ -113,6 +105,12 @@ architecture rtl of uart is
 
     signal rx_baud_counter : unsigned(c_rx_div_width - 1 downto 0) := (others => '0');
     signal rx_baud_tick    : std_logic := '0';
+    
+     -- Fractional baud divider signals
+    signal tx_rem_accum : integer range 0 to clock_frequency := 0;
+    signal tx_div_adj   : integer range 0 to 1 := 0;
+    signal rx_rem_accum : integer range 0 to clock_frequency := 0;
+    signal rx_div_adj   : integer range 0 to 1 := 0;
 
     ---------------------------------------------------------------------------
     -- TRANSMITTER SIGNALS
@@ -154,16 +152,6 @@ architecture rtl of uart is
     signal uart_rx_bit_spacing  : unsigned(c_rx_spc_width-1 downto 0) := (others => '0');
     signal uart_rx_bit_tick     : std_logic := '0';
     signal start_confirm_count  : integer range 0 to oversample := 0;
-
-     -- Fractional baud divider signals
-    signal tx_rem_accum : integer range 0 to clock_frequency := 0;
-    signal tx_div_adj   : integer range 0 to 1 := 0;
-    signal rx_rem_accum : integer range 0 to clock_frequency := 0;
-    signal rx_div_adj   : integer range 0 to 1 := 0;
-
-
-
-
 
 begin
     
