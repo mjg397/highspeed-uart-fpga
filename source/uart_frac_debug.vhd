@@ -91,10 +91,10 @@ architecture rtl of uart is
 
     constant half_bit_count : integer := oversample/2 - 1;
     
-    constant c_tx_rem : integer := clock_frequency mod baud;
-    constant c_rx_rem : integer := clock_frequency mod baud;
-    constant c_tx_den : integer := baud;
-    constant c_rx_den : integer := baud;
+    constant c_tx_rem : integer := clock_frequency mod (baud * oversample);
+    constant c_rx_rem : integer := clock_frequency mod (baud * oversample);
+    constant c_tx_den : integer := baud * oversample;
+    constant c_rx_den : integer := baud * oversample;
 
     
     ---------------------------------------------------------------------------
@@ -105,7 +105,7 @@ architecture rtl of uart is
 
     signal rx_baud_counter : unsigned(c_rx_div_width - 1 downto 0) := (others => '0');
     signal rx_baud_tick    : std_logic := '0';
-    
+
      -- Fractional baud divider signals
     signal tx_rem_accum : integer range 0 to clock_frequency := 0;
     signal tx_div_adj   : integer range 0 to 1 := 0;
@@ -197,19 +197,11 @@ begin
     ---------------------------------------------------------------------------
     -- RX_CLOCK_DIVIDER
     --
-    -- Non-fractional clock divider for the receiver oversample clock.
-    -- Generates rx_baud_tick at approximately baud * oversample.
-    ---------------------------------------------------------------------------
-    ---------------------------------------------------------------------------
-    -- RX_CLOCK_DIVIDER
-    --
     -- Fractional clock divider for the receiver timing tick.
     -- Uses integer division plus remainder accumulation so the
     -- average tick rate matches the desired rate even when the
     -- divider is non-integer.
     ---------------------------------------------------------------------------
-
-
 
     rx_clock_divider : process (clock)
         variable v_next_rem  : integer;
@@ -401,7 +393,7 @@ begin
         if rising_edge(clock) then
             if reset = '1' then
                 tx_baud_counter <= (others => '0');
-                rx_baud_tick    <= '0';
+                tx_baud_tick    <= '0';
                 tx_rem_accum    <= 0;
                 tx_div_adj      <= 0;
             else
