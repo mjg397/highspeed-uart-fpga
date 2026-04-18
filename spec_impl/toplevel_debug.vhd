@@ -83,56 +83,36 @@ begin
             dbg_uart_rx_data_sr  => dbg_uart_rx_data_sr 
         );
 
-    --------------------------------------------------------------------
-    -- FIFO instance
-    --------------------------------------------------------------------
---    U_FIFO : entity work.GENERIC_FIFO
---        generic map (
---            FIFO_WIDTH => 8,
---            FIFO_DEPTH => 1024
---        )
---        port map (
---            clock      => CLK100MHZ,
---            reset      => rst,
---            write_data => fifo_din,
---            read_data  => fifo_dout,
---            write_en   => fifo_wr_en,
---            read_en    => fifo_rd_en,
---            full       => fifo_full,
---            empty      => fifo_empty,
---            level      => fifo_level
---        );
 
-U_FIFO : entity work.generic_fifo_IP
+U_FIFO : entity work.command_fifo_IP
         port map (
             rst         => rst,
             wr_clk      => CLK100MHZ,
             rd_clk      => CLK100MHZ,
-            din         => fifo_din,
-            wr_en       => fifo_wr_en,
-            rd_en       => fifo_rd_en,
-            dout        => fifo_dout,
-            full        => fifo_full,
-            empty       => fifo_empty,
+            din         => command_fifo_din,
+            wr_en       => command_fifo_wr_en,
+            rd_en       => command_fifo_rd_en,
+            dout        => command_fifo_dout,
+            full        => command_fifo_full,
+            empty       => command_fifo_empty,
             wr_rst_busy => open,
             rd_rst_busy => open
         );
 
---    U_ILA : entity work.ila_0
---        port map (
---            clk     => CLK100MHZ,
---            probe0  => (0 => rx_stb),
---            probe1  => rx_data,
---            probe2  => (0 => fifo_wr_en),
---            probe3  => fifo_din,
---            probe4  => (0 => fifo_rd_en),
---            probe5  => fifo_dout,
---            probe6  => (0 => fifo_empty),
---            probe7  => (0 => fifo_full),
---            probe8  => (0 => tx_stb),
---            probe9  => (0 => tx_ack),
---            probe10 => tx_data
---        );
+U_FIFO : entity work.stats_fifo_IP
+    port map (
+        rst         => rst,
+        wr_clk      => CLK100MHZ,
+        rd_clk      => CLK100MHZ,
+        din         => stats_fifo_din,
+        wr_en       => stats_fifo_wr_en,
+        rd_en       => stats_fifo_rd_en,
+        dout        => stats_fifo_dout,
+        full        => stats_fifo_full,
+        empty       => stats_fifo_empty,
+        wr_rst_busy => open,
+        rd_rst_busy => open
+    );
         
 U_ILA : entity work.ila_1
     port map (
