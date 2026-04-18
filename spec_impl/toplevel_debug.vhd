@@ -136,54 +136,45 @@ U_ILA : entity work.ila_1
     --------------------------------------------------------------------
     -- FIFO loopback logic (fixed)
     --------------------------------------------------------------------
-    process (CLK100MHZ)
+    process (CLK125MHZ)
     begin
-        if rising_edge(CLK100MHZ) then
+        if rising_edge(CLK125MHZ) then
             if rst = '1' then
                 tx_stb      <= '0';
                 tx_data     <= (others => '0');
+
+                fifo_din    <= (others => '0');
                 fifo_wr_en  <= '0';
                 fifo_rd_en  <= '0';
-                fifo_din    <= (others => '0');
-                pop_pending <= '0';
             else
-                -- defaults (single-cycle strobes)
+                -- defaults: pulses are 0 unless we assert them this cycle
                 fifo_wr_en <= '0';
                 fifo_rd_en <= '0';
 
-                -- Drop TX request once UART accepts it
+                -- If UART accepted a byte, drop the strobe (same as your original)
                 if tx_ack = '1' then
                     tx_stb <= '0';
                 end if;
 
-                ------------------------------------------------------------
+                ----------------------------------------------------------------
                 -- RX -> FIFO write
-                ------------------------------------------------------------
+                ----------------------------------------------------------------
                 if (rx_stb = '1') and (fifo_full = '0') then
-                    fifo_wr_en <= '1';
                     fifo_din   <= rx_data;
+                    fifo_wr_en <= '1';
                 end if;
 
-                ------------------------------------------------------------
-                -- FIFO -> TX (2-step: pop, then transmit next cycle)
-                ------------------------------------------------------------
-
-                -- Step 1: request a FIFO pop when we don't already have one pending,
-                -- and we are not currently trying to transmit a byte.
-                if (pop_pending = '0') and (tx_stb = '0') and (fifo_empty = '0') then
-                    fifo_rd_en  <= '1';   -- pop FIFO now
-                    pop_pending <= '1';   -- fifo_dout will be valid next cycle (typical FIFO)
+                ----------------------------------------------------------------
+                -- FIFO read -> UART TX
+                -- Only start a TX when we're not already holding tx_stb high
+                ----------------------------------------------------------------
+                if (tx_stb = '0') and (fifo_empty = '0') then
+                    -- fifo_dout is already the next byte at current read_pointer
+                    tx_data    <= fifo_dout;
+                    tx_stb     <= '1';     -- request transmit
+                    fifo_rd_en <= '1';     -- advance FIFO pointer (consume)
                 end if;
-
-                -- Step 2: on the cycle after the pop, launch UART TX using fifo_dout
-                if (pop_pending = '1') and (tx_stb = '0') then
-                    tx_data     <= fifo_dout;
-                    tx_stb      <= '1';
-                    pop_pending <= '0';
-                end if;
-
             end if;
         end if;
     end process;
-
 end architecture;
