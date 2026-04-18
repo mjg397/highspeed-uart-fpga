@@ -88,7 +88,7 @@ U_FIFO : entity work.command_fifo_IP
         port map (
             rst         => rst,
             wr_clk      => CLK100MHZ,
-            rd_clk      => CLK100MHZ,
+            rd_clk      => CLK125MHZ,
             din         => command_fifo_din,
             wr_en       => command_fifo_wr_en,
             rd_en       => command_fifo_rd_en,
@@ -102,7 +102,7 @@ U_FIFO : entity work.command_fifo_IP
 U_FIFO : entity work.stats_fifo_IP
     port map (
         rst         => rst,
-        wr_clk      => CLK100MHZ,
+        wr_clk      => CLK125MHZ,
         rd_clk      => CLK100MHZ,
         din         => stats_fifo_din,
         wr_en       => stats_fifo_wr_en,
