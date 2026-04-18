@@ -374,13 +374,7 @@ begin
     ---------------------------------------------------------------------------
     -- TX_CLOCK_DIVIDER
     --
-    -- Generates a tick at the baud rate (1x).
-    -- Each tick advances the transmitter by one bit.
-    ---------------------------------------------------------------------------
-    ---------------------------------------------------------------------------
-    -- RX_CLOCK_DIVIDER
-    --
-    -- Fractional clock divider for the receiver baud tick.
+    -- Fractional clock divider for the transmitter baud tick.
     -- Uses integer division plus remainder accumulation so the
     -- average tick rate matches BAUD even when CLOCK_FREQ / BAUD
     -- is not an integer.
@@ -397,12 +391,6 @@ begin
                 tx_rem_accum    <= 0;
                 tx_div_adj      <= 0;
             else
-                -- normal interval   = c_rx_div clocks
-                -- extended interval = c_rx_div + 1 clocks
-                --
-                -- counter starts at 0, so compare against:
-                -- normal   -> c_rx_div - 1
-                -- extended -> c_rx_div
                 v_div_limit := c_tx_div - 1 + tx_div_adj;
 
                 if tx_baud_counter = to_unsigned(v_div_limit, tx_baud_counter'length) then
