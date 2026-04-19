@@ -39,8 +39,8 @@
 --
 -- Notes:
 --   • RX uses 8× oversampling with fractional baud rate generation
---   • TX operates at 1× baud rate using fractional baud rate generation
---   • Designed to maintain reliable mid-bit sampling at high baud rates
+--   • TX operates at 1x baud rate
+--   • Designed to maintain reliable sampling at high baud rates
 -------------------------------------------------------------------------------
 
 library ieee;
