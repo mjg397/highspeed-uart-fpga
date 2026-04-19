@@ -91,9 +91,9 @@ architecture rtl of uart is
 
     constant half_bit_count : integer := oversample/2 - 1;
     
-    constant c_tx_rem : integer := clock_frequency mod (baud * oversample);
+    constant c_tx_rem : integer := clock_frequency mod baud;
     constant c_rx_rem : integer := clock_frequency mod (baud * oversample);
-    constant c_tx_den : integer := baud * oversample;
+    constant c_tx_den : integer := baud;
     constant c_rx_den : integer := baud * oversample;
 
     
