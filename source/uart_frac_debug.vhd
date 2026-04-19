@@ -203,7 +203,6 @@ begin
     -- average tick rate matches the desired rate even when the
     -- divider is non-integer.
     ---------------------------------------------------------------------------
-
     rx_clock_divider : process (clock)
         variable v_next_rem  : integer;
         variable v_div_limit : integer;
@@ -375,12 +374,11 @@ begin
     ---------------------------------------------------------------------------
     -- TX_CLOCK_DIVIDER
     --
-    -- Fractional clock divider for the transmitter baud tick.
+    -- Fractional clock divider for the transmitter timing tick.
     -- Uses integer division plus remainder accumulation so the
-    -- average tick rate matches BAUD even when CLOCK_FREQ / BAUD
-    -- is not an integer.
+    -- average tick rate matches the desired rate even when the
+    -- divider is non-integer.
     ---------------------------------------------------------------------------
-
     tx_clock_divider : process (clock)
         variable v_next_rem  : integer;
         variable v_div_limit : integer;
@@ -398,7 +396,6 @@ begin
                     tx_baud_counter <= (others => '0');
                     tx_baud_tick    <= '1';
 
-                    -- decide whether NEXT interval gets one extra clock
                     v_next_rem := tx_rem_accum + c_tx_rem;
 
                     if v_next_rem >= c_tx_den then
