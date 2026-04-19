@@ -34,7 +34,7 @@
 --   • Verified reliable operation up to ~12 Mbaud on FPGA + FTDI interface
 --
 -- Notes:
---   • RX uses fixed 8x oversampling
+--   • RX uses 8× oversampling with fractional baud rate generation
 --   • TX operates at 1x baud rate
 --   • Designed to maintain reliable sampling at high baud rates
 -------------------------------------------------------------------------------
