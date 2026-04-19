@@ -40,7 +40,7 @@
 -- Notes:
 --   • RX uses fixed 8x oversampling
 --   • TX operates at 1x baud rate
---   • Designed to maintain reliable sampling at high baud ratess
+--   • Designed to maintain reliable sampling at high baud rates
 -------------------------------------------------------------------------------
 
 library ieee;
