@@ -109,6 +109,7 @@ architecture rtl of uart is
      -- Fractional baud divider signals
     signal tx_rem_accum : integer range 0 to clock_frequency := 0;
     signal tx_div_adj   : integer range 0 to 1 := 0;
+
     signal rx_rem_accum : integer range 0 to clock_frequency := 0;
     signal rx_div_adj   : integer range 0 to 1 := 0;
 
