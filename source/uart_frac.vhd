@@ -33,10 +33,6 @@
 --   • Simplified RX datapath by removing input filtering
 --   • Verified reliable operation up to ~12 Mbaud on FPGA + FTDI interface
 --
--- Debug:
---   Includes internal debug signals for ILA-based verification.
---   These can be removed for non-debug / production builds.
---
 -- Notes:
 --   • RX uses fixed 8x oversampling
 --   • TX operates at 1x baud rate
@@ -63,16 +59,6 @@ entity uart is
         data_stream_out_stb : out std_logic;
         tx                  : out std_logic;
         rx                  : in  std_logic;
-        
-        -- Debug signals
-        dbg_rx_baud_tick     : out std_logic;
-        dbg_uart_rx_bit      : out std_logic;
-        dbg_uart_rx_state    : out std_logic_vector(1 downto 0);
-        dbg_uart_rx_spacing  : out std_logic_vector(3 downto 0);
-        dbg_uart_rx_bit_tick : out std_logic;
-        dbg_uart_rx_count    : out std_logic_vector(2 downto 0);
-        dbg_uart_rx_data_vec : out std_logic_vector(7 downto 0);
-        dbg_uart_rx_data_sr  : out std_logic_vector(1 downto 0)
     );
 end uart;
 
@@ -109,6 +95,7 @@ architecture rtl of uart is
      -- Fractional baud divider signals
     signal tx_rem_accum : integer range 0 to clock_frequency := 0;
     signal tx_div_adj   : integer range 0 to 1 := 0;
+
     signal rx_rem_accum : integer range 0 to clock_frequency := 0;
     signal rx_div_adj   : integer range 0 to 1 := 0;
 
@@ -154,33 +141,6 @@ architecture rtl of uart is
     signal start_confirm_count  : integer range 0 to oversample := 0;
 
 begin
-    
-    ---------------------------------------------------------------------------
-    -- DEBUG SIGNAL EXPORTS (for ILA / hardware debugging)
-    --
-    -- dbg_rx_baud_tick     : Oversample tick (baud * oversample)
-    -- dbg_uart_rx_bit      : Synchronized RX input bit
-    -- dbg_uart_rx_bit_tick : 1x bit sampling tick
-    -- dbg_uart_rx_count    : Counts received data bits (0-7)
-    -- dbg_uart_rx_data_vec : Current received byte (shift register)
-    -- dbg_uart_rx_data_sr  : RX synchronizer shift register
-    -- dbg_uart_rx_spacing  : Oversample spacing counter
-    -- dbg_uart_rx_state    : Encoded RX FSM state
-    ---------------------------------------------------------------------------
-    dbg_rx_baud_tick     <= rx_baud_tick;
-    dbg_uart_rx_bit      <= uart_rx_bit;
-    dbg_uart_rx_bit_tick <= uart_rx_bit_tick;
-    dbg_uart_rx_count    <= std_logic_vector(uart_rx_count);
-    dbg_uart_rx_data_vec <= uart_rx_data_vec;
-    dbg_uart_rx_data_sr  <= uart_rx_data_sr;
-    dbg_uart_rx_spacing  <= std_logic_vector(uart_rx_bit_spacing);
-
-    with uart_rx_state select
-        dbg_uart_rx_state <=
-            "00" when rx_get_start_bit,
-            "01" when rx_confirm_start,
-            "10" when rx_get_data,
-            "11" when rx_get_stop_bit;
 
     ---------------------------------------------------------------------------
     -- CONNECT IO
@@ -202,7 +162,6 @@ begin
     -- average tick rate matches the desired rate even when the
     -- divider is non-integer.
     ---------------------------------------------------------------------------
-
     rx_clock_divider : process (clock)
         variable v_next_rem  : integer;
         variable v_div_limit : integer;
@@ -330,7 +289,7 @@ begin
                     
                     when rx_confirm_start =>
                         if rx_baud_tick = '1' then
-                            if start_confirm_count = half_bit_count then
+                            if start_confirm_count = half_bit_count - 1 then
                                 if uart_rx_bit = '0' then
                                     uart_rx_count <= (others => '0');
                                     uart_rx_state <= rx_get_data;
@@ -374,12 +333,11 @@ begin
     ---------------------------------------------------------------------------
     -- TX_CLOCK_DIVIDER
     --
-    -- Fractional clock divider for the transmitter baud tick.
+    -- Fractional clock divider for the transmitter timing tick.
     -- Uses integer division plus remainder accumulation so the
-    -- average tick rate matches BAUD even when CLOCK_FREQ / BAUD
-    -- is not an integer.
+    -- average tick rate matches the desired rate even when the
+    -- divider is non-integer.
     ---------------------------------------------------------------------------
-
     tx_clock_divider : process (clock)
         variable v_next_rem  : integer;
         variable v_div_limit : integer;
@@ -397,7 +355,6 @@ begin
                     tx_baud_counter <= (others => '0');
                     tx_baud_tick    <= '1';
 
-                    -- decide whether NEXT interval gets one extra clock
                     v_next_rem := tx_rem_accum + c_tx_rem;
 
                     if v_next_rem >= c_tx_den then
