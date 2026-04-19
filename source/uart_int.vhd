@@ -19,7 +19,7 @@
 --   • Bit-spacing counter generates a 1x sampling tick from oversample ticks
 --   • RX FSM shifts in data and asserts a one-cycle valid strobe on completion
 --
--- Timing Architecture:
+-- Timing Architecture:--
 --   • Clock dividers generate TX (1x) and RX (8x) baud ticks from system clock
 --   • RX sampling is aligned to bit centers for improved timing margin
 --   • All logic is synchronous to the FPGA clock (no asynchronous domains)
