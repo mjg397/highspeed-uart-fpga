@@ -38,9 +38,9 @@
 --   These can be removed for non-debug / production builds.
 --
 -- Notes:
---   • RX uses fixed 8x oversampling
---   • TX operates at 1x baud rate
---   • Designed to maintain reliable sampling at high baud rates
+--   • RX uses 8× oversampling with fractional baud rate generation
+--   • TX operates at 1× baud rate using fractional baud rate generation
+--   • Designed to maintain reliable mid-bit sampling at high baud rates
 -------------------------------------------------------------------------------
 
 library ieee;
