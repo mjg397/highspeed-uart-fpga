@@ -330,7 +330,7 @@ begin
                     
                     when rx_confirm_start =>
                         if rx_baud_tick = '1' then
-                            if start_confirm_count = half_bit_count then
+                            if start_confirm_count = half_bit_count - 1 then
                                 if uart_rx_bit = '0' then
                                     uart_rx_count <= (others => '0');
                                     uart_rx_state <= rx_get_data;
