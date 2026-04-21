@@ -18,17 +18,6 @@ entity top_uart_loopback_fifo is
 end entity;
 
 architecture rtl of top_uart_loopback_fifo is
-    -- debug signals
-    signal dbg_rx_baud_tick     : std_logic;
-    signal dbg_uart_rx_bit      : std_logic;
-    signal dbg_uart_rx_state    : std_logic_vector(1 downto 0);
-    signal dbg_uart_rx_spacing  : std_logic_vector(3 downto 0); -- or exact width
-    signal dbg_uart_rx_bit_tick : std_logic;
-    signal dbg_uart_rx_count    : std_logic_vector(2 downto 0);
-    signal dbg_uart_rx_data_vec : std_logic_vector(7 downto 0);
-    signal dbg_uart_rx_data_sr  : std_logic_vector(1 downto 0);
-    
-   
     -- UART parallel interface signals
     signal rx_data        : std_logic_vector(7 downto 0);
     signal rx_stb         : std_logic;
@@ -46,9 +35,6 @@ architecture rtl of top_uart_loopback_fifo is
     signal fifo_full      : std_logic;
     signal fifo_empty     : std_logic;
     signal fifo_level     : std_logic_vector(9 downto 0);
-
-    -- Control: indicates we've issued a pop and will have valid fifo_dout next cycle
-    signal pop_pending    : std_logic := '0';
 
 begin
 
@@ -72,37 +58,11 @@ begin
             data_stream_out_stb => rx_stb,
             tx                  => uart_tx,
             rx                  => uart_rx,
-            --debug
-            dbg_rx_baud_tick     => dbg_rx_baud_tick,--
-            dbg_uart_rx_bit      => dbg_uart_rx_bit, --
-            dbg_uart_rx_state    => dbg_uart_rx_state, --
-            dbg_uart_rx_spacing  => dbg_uart_rx_spacing, --
-            dbg_uart_rx_bit_tick => dbg_uart_rx_bit_tick, --
-            dbg_uart_rx_count    => dbg_uart_rx_count, --
-            dbg_uart_rx_data_vec => dbg_uart_rx_data_vec, --
-            dbg_uart_rx_data_sr  => dbg_uart_rx_data_sr 
         );
 
     --------------------------------------------------------------------
     -- FIFO instance
     --------------------------------------------------------------------
---    U_FIFO : entity work.GENERIC_FIFO
---        generic map (
---            FIFO_WIDTH => 8,
---            FIFO_DEPTH => 1024
---        )
---        port map (
---            clock      => CLK100MHZ,
---            reset      => rst,
---            write_data => fifo_din,
---            read_data  => fifo_dout,
---            write_en   => fifo_wr_en,
---            read_en    => fifo_rd_en,
---            full       => fifo_full,
---            empty      => fifo_empty,
---            level      => fifo_level
---        );
-
 U_FIFO : entity work.generic_fifo_IP
         port map (
             rst         => rst,
@@ -117,44 +77,9 @@ U_FIFO : entity work.generic_fifo_IP
             wr_rst_busy => open,
             rd_rst_busy => open
         );
-
---    U_ILA : entity work.ila_0
---        port map (
---            clk     => CLK100MHZ,
---            probe0  => (0 => rx_stb),
---            probe1  => rx_data,
---            probe2  => (0 => fifo_wr_en),
---            probe3  => fifo_din,
---            probe4  => (0 => fifo_rd_en),
---            probe5  => fifo_dout,
---            probe6  => (0 => fifo_empty),
---            probe7  => (0 => fifo_full),
---            probe8  => (0 => tx_stb),
---            probe9  => (0 => tx_ack),
---            probe10 => tx_data
---        );
-        
-U_ILA : entity work.ila_1
-    port map (
-        clk     => CLK100MHZ,
-        probe0  => (0 => uart_rx),
-        probe1  => (0 => dbg_rx_baud_tick),
-        probe2  => (0 => dbg_uart_rx_bit),
-        probe3  => dbg_uart_rx_state,
-        probe4  => dbg_uart_rx_spacing,
-        probe5  => (0 => dbg_uart_rx_bit_tick),
-        probe6  => dbg_uart_rx_count,
-        probe7  => dbg_uart_rx_data_vec,
-        probe8  => (0 => rx_stb),
-        probe9  => rx_data,
-        probe10 => (0 => fifo_wr_en),
-        probe11 => fifo_din,
-        probe12 => (0 => uart_rx),
-        probe13 => dbg_uart_rx_data_sr
-    );
         
     --------------------------------------------------------------------
-    -- FIFO loopback logic (fixed)
+    -- FIFO loopback logic
     --------------------------------------------------------------------
 process (CLK100MHZ)
     begin
