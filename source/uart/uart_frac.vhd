@@ -1,42 +1,15 @@
 -------------------------------------------------------------------------------
 -- High-Speed UART (up to ~12 Mbaud)
 --
--- Author: Michael Grillo
+-- Developed by Michael Grillo
 -- Based on original UART design by Peter Bennett:
 -- https://github.com/pabennett/uart
 --
--- Description:
---   Implements a fully synchronous UART transmitter and receiver for serial
---   communication between an FPGA and external devices (e.g., FTDI USB-UART).
---   Converts between parallel byte streams and serialized UART data using a
---   streaming interface (TX handshake, RX valid strobe).
+-- Synchronous FPGA UART TX/RX core for FTDI USB-UART communication, targeting
+-- 3 Mbaud with FT232RL and 12 Mbaud with FT232H.
 --
--- Operation:
---   • TX: Accepts input bytes via strobe/ack handshake and transmits
---         start bit, 8 data bits (LSB first), and stop bit at 1x baud
---   • RX: Uses 8x oversampling to detect incoming data and reconstruct bytes
---   • Start-bit confirmation (half-bit delay) aligns sampling to mid-bit
---   • Bit-spacing counter generates a 1x sampling tick from oversample ticks
---   • RX FSM shifts in data and asserts a one-cycle valid strobe on completion
---
--- Timing Architecture:
---   • Clock dividers generate TX (1x) and RX (8x) baud ticks from system clock
---   • RX sampling is aligned to bit centers for improved timing margin
---   • All logic is synchronous to the FPGA clock (no asynchronous domains)
---
--- Enhancements:
---   • Improved RX timing alignment for consistent mid-bit sampling
---   • Added start-bit confirmation (half-bit delay)
---   • Refined oversample spacing to ensure accurate bit-period timing
---   • Corrected baud/oversample counter behavior for precise timing
---   • Updated RX synchronizer to run every clock cycle (improved CDC)
---   • Simplified RX datapath by removing input filtering
---   • Verified reliable operation up to ~12 Mbaud on FPGA + FTDI interface
---
--- Notes:
---   • RX uses 8× oversampling with fractional baud rate generation
---   • TX operates at 1x baud rate
---   • Designed to maintain reliable sampling at high baud rates
+-- Includes fractional baud generation, 8× RX oversampling, half-bit start-bit
+-- confirmation, corrected timing alignment, and clock-cycle RX synchronization.
 -------------------------------------------------------------------------------
 
 library ieee;
@@ -201,7 +174,6 @@ begin
     --
     -- Two-stage flip-flop synchronizer to safely bring the asynchronous RX
     -- signal into the FPGA clock domain and reduce metastability.
-    -- Runs every clock cycle to provide a stable sampled input for the receiver.
     ---------------------------------------------------------------------------
     rxd_synchronize : process(clock)
     begin
@@ -256,7 +228,7 @@ begin
     --
     -- State 2: rx_confirm_start
     --   Wait half a bit period, then re-check the line to confirm a valid
-    --   start bit (rejects noise/glitches).
+    --   start bit.
     --   This aligns the sampling point to the center of the bit, so all
     --   following data bits are sampled mid-bit.
     --
