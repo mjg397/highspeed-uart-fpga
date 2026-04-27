@@ -1,36 +1,11 @@
-## ========= Minimal constraints for UART loopback via PMOD JA (external FTDI) =========
-
-## 100 MHz clock
-set_property -dict { PACKAGE_PIN E3 IOSTANDARD LVCMOS33 } [get_ports { CLK100MHZ }]
-create_clock -add -name sys_clk_pin -period 10.00 -waveform {0 5} [get_ports { CLK100MHZ }]
-
-## Reset button (CPU reset, active low)
-set_property -dict { PACKAGE_PIN C12 IOSTANDARD LVCMOS33 } [get_ports { RESETN }] // <- maybe dont include a physical reset pin in here not needed
-
-## PMOD JA UART (external module)
-## Your wiring: JA2 = FTDI TXO -> FPGA RX, JA3 = FTDI RXI <- FPGA TX
-###set_property -dict { PACKAGE_PIN D18 IOSTANDARD LVCMOS33 } [get_ports { uart_rx }]  ;# JA[2]
-###set_property -dict { PACKAGE_PIN E18 IOSTANDARD LVCMOS33 } [get_ports { uart_tx }]  ;# JA[3]
-## PMOD JB UART (external FTDI)
-
-set_property PACKAGE_PIN B13 [get_ports uart_rx]   ;# JB1
-set_property IOSTANDARD LVCMOS33 [get_ports uart_rx]
-
-set_property PACKAGE_PIN F14 [get_ports uart_tx]   ;# JB2
-set_property IOSTANDARD LVCMOS33 [get_ports uart_tx]
-
-
-
-## This file is a general .xdc for the Nexys4 rev B board
-## To use it in a project:
-## - uncomment the lines corresponding to used pins
-## - rename the used ports (in each line, after get_ports) according to the top level signal names in the project
+## Nexys A7-100T master constraints file
+## Configured for external USB-UART (FTDI FT232H or FTDI FT232RL)
 
 ## Clock signal
 ##Bank = 35, Pin name = IO_L12P_T1_MRCC_35,					Sch name = CLK100MHZ
-set_property -dict { PACKAGE_PIN E3 IOSTANDARD LVCMOS33 } [get_ports { CLK100MHZ }]
-create_clock -add -name sys_clk_pin -period 10.00 -waveform {0 5} [get_ports { CLK100MHZ }]
-
+set_property -dict { PACKAGE_PIN E3 IOSTANDARD LVCMOS33 }
+	[get_ports { CLK100MHZ }]; #IO_L12P_T1_MRCC_35 Sch=clk100mhz
+	create_clock -add -name sys_clk_pin -period 10.00 -waveform {0 5} [get_ports { CLK100MHZ }];
  
 ## Switches
 ##Bank = 34, Pin name = IO_L21P_T3_DQS_34,					Sch name = SW0
@@ -228,16 +203,16 @@ create_clock -add -name sys_clk_pin -period 10.00 -waveform {0 5} [get_ports { C
 ##Bank = 14, Pin name = IO_L21P_T3_DQS_14,					Sch name = BTND
 #set_property PACKAGE_PIN V10 [get_ports btnD]						
 	#set_property IOSTANDARD LVCMOS33 [get_ports btnD]
- 
+
 
 
 ##Pmod Header JA
 ##Bank = 15, Pin name = IO_L1N_T0_AD0N_15,					Sch name = JA1
-#set_property PACKAGE_PIN B13 [get_ports {JA[0]}]					
-	#set_property IOSTANDARD LVCMOS33 [get_ports {JA[0]}]
+set_property PACKAGE_PIN B13 [get_ports uart_rx]
+	set_property IOSTANDARD LVCMOS33 [get_ports uart_rx]
 ##Bank = 15, Pin name = IO_L5N_T0_AD9N_15,					Sch name = JA2
-#set_property PACKAGE_PIN F14 [get_ports {JA[1]}]					
-	#set_property IOSTANDARD LVCMOS33 [get_ports {JA[1]}]
+set_property PACKAGE_PIN F14 [get_ports uart_tx]
+	set_property IOSTANDARD LVCMOS33 [get_ports uart_tx]
 ##Bank = 15, Pin name = IO_L16N_T2_A27_15,					Sch name = JA3
 #set_property PACKAGE_PIN D17 [get_ports {JA[2]}]					
 	#set_property IOSTANDARD LVCMOS33 [get_ports {JA[2]}]
