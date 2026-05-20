@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- High-Speed UART (up to ~12 Mbaud) [Debug Version]
+-- High-Speed UART (up to ~12 Mbaud)
 --
 -- Developed by Michael Grillo
 -- Based on original UART design by Peter Bennett:
@@ -8,10 +8,8 @@
 -- Synchronous FPGA UART TX/RX core for FTDI USB-UART communication, targeting
 -- 3 Mbaud with FT232RL and 12 Mbaud with FT232H.
 --
--- Includes fixed baud generation, 8× RX oversampling, half-bit start-bit
+-- Includes fixed baud generation, 8x RX oversampling, half-bit start-bit
 -- confirmation, corrected timing alignment, and clock-cycle RX synchronization.
---
--- Includes internal debug signals for ILA-based verification.
 -------------------------------------------------------------------------------
 
 library ieee;
@@ -19,7 +17,7 @@ library ieee;
     use ieee.numeric_std.all;
     use ieee.math_real.all;
 
-entity uart_int_debug is
+entity uart_int is
     generic (
         baud                : positive;
         clock_frequency     : positive
@@ -33,21 +31,11 @@ entity uart_int_debug is
         data_stream_out     : out std_logic_vector(7 downto 0);
         data_stream_out_stb : out std_logic;
         tx                  : out std_logic;
-        rx                  : in  std_logic;
-        
-        -- Debug signals
-        dbg_rx_baud_tick     : out std_logic;
-        dbg_uart_rx_bit      : out std_logic;
-        dbg_uart_rx_state    : out std_logic_vector(1 downto 0);
-        dbg_uart_rx_spacing  : out std_logic_vector(3 downto 0);
-        dbg_uart_rx_bit_tick : out std_logic;
-        dbg_uart_rx_count    : out std_logic_vector(2 downto 0);
-        dbg_uart_rx_data_vec : out std_logic_vector(7 downto 0);
-        dbg_uart_rx_data_sr  : out std_logic_vector(1 downto 0)
+        rx                  : in  std_logic
     );
-end uart_int_debug;
+end uart_int;
 
-architecture rtl of uart_int_debug is
+architecture rtl of uart_int is
 
     ---------------------------------------------------------------------------
     -- BAUD GENERATION TIMING CONSTANTS
@@ -113,33 +101,6 @@ architecture rtl of uart_int_debug is
     signal start_confirm_count  : integer range 0 to oversample := 0;
 
 begin
-    
-    ---------------------------------------------------------------------------
-    -- DEBUG SIGNAL EXPORTS (for ILA / hardware debugging)
-    --
-    -- dbg_rx_baud_tick     : Oversample tick (baud * oversample)
-    -- dbg_uart_rx_bit      : Synchronized RX input bit
-    -- dbg_uart_rx_bit_tick : 1x bit sampling tick
-    -- dbg_uart_rx_count    : Counts received data bits (0-7)
-    -- dbg_uart_rx_data_vec : Current received byte (shift register)
-    -- dbg_uart_rx_data_sr  : RX synchronizer shift register
-    -- dbg_uart_rx_spacing  : Oversample spacing counter
-    -- dbg_uart_rx_state    : Encoded RX FSM state
-    ---------------------------------------------------------------------------
-    dbg_rx_baud_tick     <= rx_baud_tick;
-    dbg_uart_rx_bit      <= uart_rx_bit;
-    dbg_uart_rx_bit_tick <= uart_rx_bit_tick;
-    dbg_uart_rx_count    <= std_logic_vector(uart_rx_count);
-    dbg_uart_rx_data_vec <= uart_rx_data_vec;
-    dbg_uart_rx_data_sr  <= uart_rx_data_sr;
-    dbg_uart_rx_spacing  <= std_logic_vector(uart_rx_bit_spacing);
-
-    with uart_rx_state select
-        dbg_uart_rx_state <=
-            "00" when rx_get_start_bit,
-            "01" when rx_confirm_start,
-            "10" when rx_get_data,
-            "11" when rx_get_stop_bit;
 
     ---------------------------------------------------------------------------
     -- CONNECT IO
