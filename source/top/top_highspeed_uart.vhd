@@ -13,7 +13,7 @@
 -- implementation, replace:
 --     entity work.uart_frac
 -- with:
---     entity work.uart
+--     entity work.uart_int
 -- in the UART instantiation below.
 ------------------------------------------------------------------------
 
