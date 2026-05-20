@@ -1,7 +1,24 @@
 ------------------------------------------------------------------------
--- Top-level hardware module for FIFO-based UART loopback (fixed FIFO read timing)
--- Key fix: do NOT use fifo_dout in the same cycle you assert fifo_rd_en.
--- Instead: pop FIFO, then on the next cycle send the (now-valid) fifo_dout.
+-- Top-Level UART FIFO Loopback
+--
+-- Receives bytes from the UART RX path, stores them in an 8-bit FIFO,
+-- then transmits them back through the UART TX path.
+--
+-- This design provides a simple hardware loopback that is intended for
+-- testing and validating UART receive, FIFO buffering, and UART
+-- transmit behavior on FPGA. 
+--
+-- Default configuration of this top level uses the fractional-baud UART
+-- implementation (uart_frac_debug). To use the original integer-divider UART
+-- implementation, replace:
+--     entity work.uart_frac_debug
+-- with:
+--     entity work.uart_int_debug
+-- in the UART instantiation below.
+--
+-- This debug variant of the top level allows internal UART timing, baud
+-- tick, spacing, synchronization, and state-machine signals to be
+-- exposed to Vivado ILA for hardware debugging and timing analysis.
 ------------------------------------------------------------------------
 
 library ieee;
@@ -18,6 +35,9 @@ entity top_uart_loopback_fifo is
 end entity;
 
 architecture rtl of top_uart_loopback_fifo is
+    
+    signal rst            : std_logic;
+
     -- debug signals
     signal dbg_rx_baud_tick     : std_logic;
     signal dbg_uart_rx_bit      : std_logic;
@@ -27,8 +47,7 @@ architecture rtl of top_uart_loopback_fifo is
     signal dbg_uart_rx_count    : std_logic_vector(2 downto 0);
     signal dbg_uart_rx_data_vec : std_logic_vector(7 downto 0);
     signal dbg_uart_rx_data_sr  : std_logic_vector(1 downto 0);
-    
-   
+
     -- UART parallel interface signals
     signal rx_data        : std_logic_vector(7 downto 0);
     signal rx_stb         : std_logic;
@@ -36,28 +55,22 @@ architecture rtl of top_uart_loopback_fifo is
     signal tx_stb         : std_logic;
     signal tx_ack         : std_logic;
 
-    signal rst            : std_logic;
-
-    -- FIFO signals (8-bit FIFO)
+    -- FIFO signals
     signal fifo_din       : std_logic_vector(7 downto 0);
     signal fifo_dout      : std_logic_vector(7 downto 0);
     signal fifo_wr_en     : std_logic;
     signal fifo_rd_en     : std_logic;
     signal fifo_full      : std_logic;
     signal fifo_empty     : std_logic;
-    signal fifo_level     : std_logic_vector(9 downto 0);
-
-    -- Control: indicates we've issued a pop and will have valid fifo_dout next cycle
-    signal pop_pending    : std_logic := '0';
 
 begin
-
-    rst <= not RESETN; -- Convert board RESETN to active-high reset
+    -- Convert active-low board reset to active-high internal reset.
+    rst <= not RESETN; 
 
     --------------------------------------------------------------------
     -- UART instance
     --------------------------------------------------------------------
-    U_UART : entity work.uart
+    U_UART : entity work.uart_frac_debug
         generic map (
             baud            => 12000000,
             clock_frequency => 100000000
@@ -72,38 +85,22 @@ begin
             data_stream_out_stb => rx_stb,
             tx                  => uart_tx,
             rx                  => uart_rx,
-            --debug
-            dbg_rx_baud_tick     => dbg_rx_baud_tick,--
-            dbg_uart_rx_bit      => dbg_uart_rx_bit, --
-            dbg_uart_rx_state    => dbg_uart_rx_state, --
-            dbg_uart_rx_spacing  => dbg_uart_rx_spacing, --
-            dbg_uart_rx_bit_tick => dbg_uart_rx_bit_tick, --
-            dbg_uart_rx_count    => dbg_uart_rx_count, --
-            dbg_uart_rx_data_vec => dbg_uart_rx_data_vec, --
+            
+            -- Debug signals
+            dbg_rx_baud_tick     => dbg_rx_baud_tick,
+            dbg_uart_rx_bit      => dbg_uart_rx_bit,
+            dbg_uart_rx_state    => dbg_uart_rx_state,
+            dbg_uart_rx_spacing  => dbg_uart_rx_spacing,
+            dbg_uart_rx_bit_tick => dbg_uart_rx_bit_tick,
+            dbg_uart_rx_count    => dbg_uart_rx_count,
+            dbg_uart_rx_data_vec => dbg_uart_rx_data_vec,
             dbg_uart_rx_data_sr  => dbg_uart_rx_data_sr 
         );
 
     --------------------------------------------------------------------
     -- FIFO instance
     --------------------------------------------------------------------
---    U_FIFO : entity work.GENERIC_FIFO
---        generic map (
---            FIFO_WIDTH => 8,
---            FIFO_DEPTH => 1024
---        )
---        port map (
---            clock      => CLK100MHZ,
---            reset      => rst,
---            write_data => fifo_din,
---            read_data  => fifo_dout,
---            write_en   => fifo_wr_en,
---            read_en    => fifo_rd_en,
---            full       => fifo_full,
---            empty      => fifo_empty,
---            level      => fifo_level
---        );
-
-U_FIFO : entity work.generic_fifo_IP
+    U_FIFO : entity work.generic_fifo_IP
         port map (
             rst         => rst,
             wr_clk      => CLK100MHZ,
@@ -117,24 +114,11 @@ U_FIFO : entity work.generic_fifo_IP
             wr_rst_busy => open,
             rd_rst_busy => open
         );
-
---    U_ILA : entity work.ila_0
---        port map (
---            clk     => CLK100MHZ,
---            probe0  => (0 => rx_stb),
---            probe1  => rx_data,
---            probe2  => (0 => fifo_wr_en),
---            probe3  => fifo_din,
---            probe4  => (0 => fifo_rd_en),
---            probe5  => fifo_dout,
---            probe6  => (0 => fifo_empty),
---            probe7  => (0 => fifo_full),
---            probe8  => (0 => tx_stb),
---            probe9  => (0 => tx_ack),
---            probe10 => tx_data
---        );
         
-U_ILA : entity work.ila_1
+    --------------------------------------------------------------------
+    -- ILA instance
+    --------------------------------------------------------------------
+    U_ILA : entity work.ila_1
     port map (
         clk     => CLK100MHZ,
         probe0  => (0 => uart_rx),
@@ -154,9 +138,9 @@ U_ILA : entity work.ila_1
     );
         
     --------------------------------------------------------------------
-    -- FIFO loopback logic (fixed)
+    -- FIFO loopback logic
     --------------------------------------------------------------------
-process (CLK100MHZ)
+    loopback_proc : process (CLK100MHZ)
     begin
         if rising_edge(CLK100MHZ) then
             if rst = '1' then
@@ -167,11 +151,11 @@ process (CLK100MHZ)
                 fifo_wr_en  <= '0';
                 fifo_rd_en  <= '0';
             else
-                -- defaults: pulses are 0 unless we assert them this cycle
+                -- Default pulse signals low unless asserted in this cycle.
                 fifo_wr_en <= '0';
                 fifo_rd_en <= '0';
 
-                -- If UART accepted a byte, drop the strobe (same as your original)
+                -- Clear transmit request once UART accepts the byte.
                 if tx_ack = '1' then
                     tx_stb <= '0';
                 end if;
@@ -179,6 +163,7 @@ process (CLK100MHZ)
                 ----------------------------------------------------------------
                 -- RX -> FIFO write
                 ----------------------------------------------------------------
+                -- Store each valid received UART byte unless the FIFO is full.
                 if (rx_stb = '1') and (fifo_full = '0') then
                     fifo_din   <= rx_data;
                     fifo_wr_en <= '1';
@@ -186,13 +171,13 @@ process (CLK100MHZ)
 
                 ----------------------------------------------------------------
                 -- FIFO read -> UART TX
-                -- Only start a TX when we're not already holding tx_stb high
                 ----------------------------------------------------------------
+                -- Start a new UART transmit when we're not already requesting one,
+                -- and there's a byte available in the FIFO.
                 if (tx_stb = '0') and (fifo_empty = '0') then
-                    -- fifo_dout is already the next byte at current read_pointer
                     tx_data    <= fifo_dout;
-                    tx_stb     <= '1';     -- request transmit
-                    fifo_rd_en <= '1';     -- advance FIFO pointer (consume)
+                    tx_stb     <= '1';
+                    fifo_rd_en <= '1';
                 end if;
             end if;
         end if;
