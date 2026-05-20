@@ -21,7 +21,7 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
-entity top_uart_loopback_fifo is
+entity top_highspeed_uart is
     port (
         CLK100MHZ : in  std_logic;
         RESETN    : in  std_logic;
@@ -30,7 +30,7 @@ entity top_uart_loopback_fifo is
     );
 end entity;
 
-architecture rtl of top_uart_loopback_fifo is
+architecture rtl of top_highspeed_uart is
     
     signal rst            : std_logic;
 
