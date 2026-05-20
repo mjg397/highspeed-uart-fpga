@@ -17,7 +17,7 @@ library ieee;
     use ieee.numeric_std.all;
     use ieee.math_real.all;
 
-entity uart is
+entity uart_int is
     generic (
         baud                : positive;
         clock_frequency     : positive;
@@ -33,9 +33,9 @@ entity uart is
         tx                  : out std_logic;
         rx                  : in  std_logic
     );
-end uart;
+end uart_int;
 
-architecture rtl of uart is
+architecture rtl of uart_int is
 
     ---------------------------------------------------------------------------
     -- BAUD GENERATION TIMING CONSTANTS
