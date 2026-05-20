@@ -1,7 +1,20 @@
 ------------------------------------------------------------------------
--- Top-level hardware module for FIFO-based UART loopback (fixed FIFO read timing)
--- Key fix: do NOT use fifo_dout in the same cycle you assert fifo_rd_en.
--- Instead: pop FIFO, then on the next cycle send the (now-valid) fifo_dout.
+-- Top-Level UART FIFO Loopback
+--
+-- Receives bytes from the UART RX path, stores them in an 8-bit FIFO,
+-- then transmits them back through the UART TX path.
+--
+-- This design provides a simple hardware loopback that is intended for
+-- testing and validating UART receive, FIFO buffering, and UART
+-- transmit behavior on FPGA. 
+--
+-- Default configuration of this top level uses the fractional-baud UART
+-- implementation (uart_frac). To use the original integer-divider UART
+-- implementation, replace:
+--     entity work.uart_frac
+-- with:
+--     entity work.uart
+-- in the UART instantiation below.
 ------------------------------------------------------------------------
 
 library ieee;
@@ -18,6 +31,9 @@ entity top_uart_loopback_fifo is
 end entity;
 
 architecture rtl of top_uart_loopback_fifo is
+    
+    signal rst            : std_logic;
+
     -- UART parallel interface signals
     signal rx_data        : std_logic_vector(7 downto 0);
     signal rx_stb         : std_logic;
@@ -25,25 +41,22 @@ architecture rtl of top_uart_loopback_fifo is
     signal tx_stb         : std_logic;
     signal tx_ack         : std_logic;
 
-    signal rst            : std_logic;
-
-    -- FIFO signals (8-bit FIFO)
+    -- FIFO signals
     signal fifo_din       : std_logic_vector(7 downto 0);
     signal fifo_dout      : std_logic_vector(7 downto 0);
     signal fifo_wr_en     : std_logic;
     signal fifo_rd_en     : std_logic;
     signal fifo_full      : std_logic;
     signal fifo_empty     : std_logic;
-    signal fifo_level     : std_logic_vector(9 downto 0);
 
 begin
-
-    rst <= not RESETN; -- Convert board RESETN to active-high reset
+    -- Convert active-low board reset to active-high internal reset.
+    rst <= not RESETN; 
 
     --------------------------------------------------------------------
     -- UART instance
     --------------------------------------------------------------------
-    U_UART : entity work.uart
+    U_UART : entity work.uart_frac
         generic map (
             baud            => 12000000,
             clock_frequency => 100000000
@@ -57,13 +70,13 @@ begin
             data_stream_out     => rx_data,
             data_stream_out_stb => rx_stb,
             tx                  => uart_tx,
-            rx                  => uart_rx,
+            rx                  => uart_rx
         );
 
     --------------------------------------------------------------------
     -- FIFO instance
     --------------------------------------------------------------------
-U_FIFO : entity work.generic_fifo_IP
+    U_FIFO : entity work.generic_fifo_IP
         port map (
             rst         => rst,
             wr_clk      => CLK100MHZ,
@@ -81,7 +94,7 @@ U_FIFO : entity work.generic_fifo_IP
     --------------------------------------------------------------------
     -- FIFO loopback logic
     --------------------------------------------------------------------
-process (CLK100MHZ)
+    loopback_proc : process (CLK100MHZ)
     begin
         if rising_edge(CLK100MHZ) then
             if rst = '1' then
@@ -92,11 +105,11 @@ process (CLK100MHZ)
                 fifo_wr_en  <= '0';
                 fifo_rd_en  <= '0';
             else
-                -- defaults: pulses are 0 unless we assert them this cycle
+                -- Default pulse signals low unless asserted in this cycle.
                 fifo_wr_en <= '0';
                 fifo_rd_en <= '0';
 
-                -- If UART accepted a byte, drop the strobe (same as your original)
+                -- Clear transmit request once UART accepts the byte.
                 if tx_ack = '1' then
                     tx_stb <= '0';
                 end if;
@@ -104,6 +117,7 @@ process (CLK100MHZ)
                 ----------------------------------------------------------------
                 -- RX -> FIFO write
                 ----------------------------------------------------------------
+                -- Store each valid received UART byte unless the FIFO is full.
                 if (rx_stb = '1') and (fifo_full = '0') then
                     fifo_din   <= rx_data;
                     fifo_wr_en <= '1';
@@ -111,13 +125,13 @@ process (CLK100MHZ)
 
                 ----------------------------------------------------------------
                 -- FIFO read -> UART TX
-                -- Only start a TX when we're not already holding tx_stb high
                 ----------------------------------------------------------------
+                -- Start a new UART transmit when we're not already requesting one,
+                -- and there's a byte available in the FIFO.
                 if (tx_stb = '0') and (fifo_empty = '0') then
-                    -- fifo_dout is already the next byte at current read_pointer
                     tx_data    <= fifo_dout;
-                    tx_stb     <= '1';     -- request transmit
-                    fifo_rd_en <= '1';     -- advance FIFO pointer (consume)
+                    tx_stb     <= '1';
+                    fifo_rd_en <= '1';
                 end if;
             end if;
         end if;
