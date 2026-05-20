@@ -8,7 +8,7 @@
 -- Synchronous FPGA UART TX/RX core for FTDI USB-UART communication, targeting
 -- 3 Mbaud with FT232RL and 12 Mbaud with FT232H.
 --
--- Includes fractional baud generation, 8× RX oversampling, half-bit start-bit
+-- Includes fractional baud generation, 8x RX oversampling, half-bit start-bit
 -- confirmation, corrected timing alignment, and clock-cycle RX synchronization.
 -------------------------------------------------------------------------------
 
@@ -31,7 +31,7 @@ entity uart_frac is
         data_stream_out     : out std_logic_vector(7 downto 0);
         data_stream_out_stb : out std_logic;
         tx                  : out std_logic;
-        rx                  : in  std_logic;
+        rx                  : in  std_logic
     );
 end uart_frac;
 
