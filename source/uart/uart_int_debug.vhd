@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- High-Speed UART (up to ~12 Mbaud) [Debug Version]
+-- High-Speed UART (up to ~12 Mbaud) [Debug Version
 --
 -- Developed by Michael Grillo
 -- Based on original UART design by Peter Bennett:
